@@ -15,31 +15,32 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          path: src # 階層ズレを防ぐため、一旦 src フォルダに退避させます
+          path: src
 
       - name: Initialize and Build All Firmwares
         run: |
           # 1. ツールチェーンと West の導入
           pip3 install west
           
-          # 2. ZMK公式の標準的なワークスペース展開（階層ズレを強制修正）
-          west init -m https://github.com/zmkfirmware/zmk --mr main workspace
+          # 2. ZMK公式の標準的なワークスペース展開（マニフェストの階層を指定）
+          # --manifest-path=app を追加して、正しい west.yml の位置を教えます
+          west init -m https://github.com/zmkfirmware/zmk --mr main --manifest-path=app workspace
           cd workspace
           
-          # あなたのリポジトリの config と boards をワークスペースに正しく配置
+          # あなたのリポジトリの config と boards をワークスペースに配置
           cp -r ../src/config .
           cp -r ../src/boards .
           
           # 依存モジュールのダウンロード
           west update
           
-          # 3. 完璧な位置関係で環境変数を固定
+          # 3. 環境変数の固定
           export ZEPHYR_BASE=${GITHUB_WORKSPACE}/workspace/zephyr
           
           # 出力用フォルダの作成
           mkdir -p ../artifacts
           
-          # 4. 各ファームウェアを標準コマンドでビルド
+          # 4. 各ファームウェアをビルド
           echo "=== Building Dongle ==="
           west build -p -b nice_nano_v2 -s app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/workspace/config"
           cp build/zephyr/zmk.uf2 ../artifacts/eyelash_sofle_dongle.uf2
