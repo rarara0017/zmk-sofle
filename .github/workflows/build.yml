@@ -12,13 +12,39 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. あなたのリポジトリ（carlosedp/zmk-sofle）をチェックアウト
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2. ZMK公式のビルド機能を直接ステップ内で実行（環境変数はすべて自動セットアップされます）
-      - name: Build ZMK Firmware
-        uses: zmkfirmware/zmk-actions/build-keyboard@v2
+      # すべてのビルド処理を1つのブロックにまとめ、環境変数（ZEPHYR_BASE）を完全に固定します
+      - name: Install and Build All Firmwares
+        run: |
+          # 1. 必要なツールとWestのセットアップ
+          pip3 install west
+          west init -l config
+          west update
+          
+          # 2. 環境変数の固定
+          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
+          echo "ZEPHYR_BASE is set to: $ZEPHYR_BASE"
+          
+          # 3. 各ファームウェアのビルドと退避
+          mkdir -p artifacts
+          
+          echo "=== Building Dongle ==="
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
+          
+          echo "=== Building Left Hand ==="
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
+          
+          echo "=== Building Right Hand ==="
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
+
+      # 4. 生成された3つのファイルをアップロード
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          # あなたのリポジトリ内の config フォルダを読み込ませる
-          user_config_dir: 'config'
+          name: eyelash_sofle_dongle_firmware
+          path: artifacts/*
