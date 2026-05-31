@@ -5,7 +5,6 @@ on:
     paths-ignore:
       - "keymap-drawer/**"
 
-# Node.js 24への強制移行警告を消すための環境変数をグローバルに設定
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -21,9 +20,20 @@ jobs:
           chmod +x ./build_local.sh
           RUNTIME=docker ./build_local.sh build
 
+      # === 【検証ステップ】生成されたファイルを力技で探してログに出す ===
+      - name: Debug Directory Structure
+        run: |
+          echo "=== 現在の全フォルダ構造をリストアップします ==="
+          find . -maxdepth 4 -not -path '*/.*'
+          
+          echo "=== リポジトリ内に .uf2 または .bin ファイルが存在するか検索します ==="
+          find . -name "*.uf2" -o -name "*.bin"
+
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: eyelash_sofle_dongle_firmware
-          # スクリプトのコピー機能に頼らず、buildフォルダから直接すべての .uf2 ファイルを回収する記述に変更
-          path: build/**/*.uf2
+          # リポジトリ内のどこかにあれば、パスを問わずすべて回収する設定
+          path: |
+            **/*.uf2
+            **/*.bin
