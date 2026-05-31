@@ -11,25 +11,25 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 【ここが重要】ZMK公式のコンパイル環境（ツールチェーン内蔵）をジョブ全体に適用します
     container:
       image: docker.io/zmkfirmware/zmk-build-arm:4.1-branch
     
     steps:
-      # 1. あなたのリポジトリをコンテナ内にチェックアウト
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2. すでにコンテナに用意されている West を使って初期化
       - name: Initialize and Update West
         run: |
           west init -l config
           west update
 
-      # 3. 環境が完璧に整った状態で直接ビルドを実行
       - name: Build All Firmwares
         run: |
           mkdir -p artifacts
+          
+          # 【最重要】CMakeにZephyrの位置を直接叩き込みます
+          export CMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/zephyr:${CMAKE_PREFIX_PATH}"
+          export ZEPHYR_BASE="${GITHUB_WORKSPACE}/zephyr"
           
           echo "=== Building Dongle ==="
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
@@ -41,9 +41,8 @@ jobs:
           
           echo "=== Building Right Hand ==="
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          cp build/zephyr/zmk.uf2 artifacts/artifacts/eyelash_sofle_right.uf2
+          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
 
-      # 4. 完全に生成された3つのファイルをマイPCに回収
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
