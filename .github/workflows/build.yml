@@ -12,40 +12,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # 1. あなたのリポジトリ（carlosedp/zmk-sofle）をチェックアウト
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 1. Westのインストールとリポジトリの初期化
-      - name: Install West and Dependencies
-        run: |
-          pip3 install west
-          west init -l config
-          west update
-
-      # 2. ドングル、左手、右手を環境変数を指定してビルド
-      - name: Build Dongle
-        run: |
-          # ZEPHYR_BASE を明示的に指定して CMake の迷子を解決します
-          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          mkdir -p artifacts && cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
-
-      - name: Build Left Hand
-        run: |
-          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
-
-      - name: Build Right Hand
-        run: |
-          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
-
-      # 3. 成果物のアップロード
-      - name: Upload Firmware Artifacts
-        uses: actions/upload-artifact@v4
+      # 2. ZMK公式のビルド機能を直接ステップ内で実行（環境変数はすべて自動セットアップされます）
+      - name: Build ZMK Firmware
+        uses: zmkfirmware/zmk-actions/build-keyboard@v2
         with:
-          name: eyelash_sofle_dongle_firmware
-          path: artifacts/*
-  
+          # あなたのリポジトリ内の config フォルダを読み込ませる
+          user_config_dir: 'config'
