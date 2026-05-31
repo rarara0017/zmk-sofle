@@ -15,30 +15,34 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 1. ZMKのビルドに必要なPython環境などの依存ツールをコンテナから直接セットアップ
+      # 1. Westのインストールとリポジトリの初期化
       - name: Install West and Dependencies
         run: |
           pip3 install west
           west init -l config
           west update
 
-      # 2. ドングル、左手、右手の3つを順番に直接コンパイル（Dockerを一切通さない）
+      # 2. ドングル、左手、右手を環境変数を指定してビルド
       - name: Build Dongle
         run: |
+          # ZEPHYR_BASE を明示的に指定して CMake の迷子を解決します
+          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           mkdir -p artifacts && cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
 
       - name: Build Left Hand
         run: |
+          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
 
       - name: Build Right Hand
         run: |
+          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
 
-      # 3. 確実に生成された artifacts フォルダの3つのUF2ファイルをアップロード
+      # 3. 成果物のアップロード
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
