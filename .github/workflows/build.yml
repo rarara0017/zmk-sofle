@@ -5,6 +5,10 @@ on:
     paths-ignore:
       - "keymap-drawer/**"
 
+# Node.js 24への強制移行警告を消すための環境変数をグローバルに設定
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,19 +16,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Create artifacts directory
-        run: mkdir -p artifacts
-
       - name: Build Firmware using Local Script
-        # リポジトリに同梱されているビルドスクリプトを、GitHubのLinux（Docker環境）上で直接実行します
         run: |
           chmod +x ./build_local.sh
           RUNTIME=docker ./build_local.sh build
-          ./build_local.sh copy ./artifacts
 
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: eyelash_sofle_dongle_firmware
-          path: artifacts/*
-
+          # スクリプトのコピー機能に頼らず、buildフォルダから直接すべての .uf2 ファイルを回収する記述に変更
+          path: build/**/*.uf2
