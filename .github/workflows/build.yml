@@ -15,25 +15,33 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Build Firmware using Local Script
+      # 1. ZMKのビルドに必要なPython環境などの依存ツールをコンテナから直接セットアップ
+      - name: Install West and Dependencies
         run: |
-          chmod +x ./build_local.sh
-          RUNTIME=docker ./build_local.sh build
+          pip3 install west
+          west init -l config
+          west update
 
-      # === 【検証ステップ】生成されたファイルを力技で探してログに出す ===
-      - name: Debug Directory Structure
+      # 2. ドングル、左手、右手の3つを順番に直接コンパイル（Dockerを一切通さない）
+      - name: Build Dongle
         run: |
-          echo "=== 現在の全フォルダ構造をリストアップします ==="
-          find . -maxdepth 4 -not -path '*/.*'
-          
-          echo "=== リポジトリ内に .uf2 または .bin ファイルが存在するか検索します ==="
-          find . -name "*.uf2" -o -name "*.bin"
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          mkdir -p artifacts && cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
 
+      - name: Build Left Hand
+        run: |
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
+
+      - name: Build Right Hand
+        run: |
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
+
+      # 3. 確実に生成された artifacts フォルダの3つのUF2ファイルをアップロード
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: eyelash_sofle_dongle_firmware
-          # リポジトリ内のどこかにあれば、パスを問わずすべて回収する設定
-          path: |
-            **/*.uf2
-            **/*.bin
+          path: artifacts/*
+  
