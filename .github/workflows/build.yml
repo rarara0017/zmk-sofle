@@ -31,7 +31,7 @@ jobs:
           export CMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/zephyr:${CMAKE_PREFIX_PATH}"
           export ZEPHYR_BASE="${GITHUB_WORKSPACE}/zephyr"
           
-          # 2. 【最重要】カスタムシールドをZMKの探索ディレクトリに直接注入します
+          # 2. カスタムシールドをZMKの探索ディレクトリに直接注入
           cp -r boards/shields/eyelash_sofle zmk/app/boards/shields/
           
           echo "=== Building Dongle ==="
@@ -39,11 +39,13 @@ jobs:
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
           
           echo "=== Building Left Hand ==="
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          # 【修正】本体シールドにディスプレイ用シールド「nice_oled」をドッキングさせ、制御を有効化します
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD="eyelash_sofle_peripheral_left nice_oled" -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
           
           echo "=== Building Right Hand ==="
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          # 【修正】右手側も同様にディスプレイ用シールド「nice_oled」を合体させてビルドします
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD="eyelash_sofle_peripheral_right nice_oled" -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
 
       - name: Upload Firmware Artifacts
