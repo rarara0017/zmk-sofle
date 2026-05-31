@@ -34,18 +34,28 @@ jobs:
           # 2. カスタムシールドをZMKの探索ディレクトリに直接注入
           cp -r boards/shields/eyelash_sofle zmk/app/boards/shields/
           
+          # 3. 【最重要】親機の定義から液晶のコンポーネント名（ラベル）を自動抽出し、左右の周辺機に注入
+          # これにより、リポジトリ本来の画面ピンマップが左・右でも強制的に開通します
+          DISPLAY_LABEL=$(grep -h -oP 'zephyr,display\s*=\s*&\K[a-zA-Z0-9_]+' zmk/app/boards/shields/eyelash_sofle/*.overlay zmk/app/boards/shields/eyelash_sofle/*.dtsi | head -n 1)
+          echo "Detected intrinsic display label: $DISPLAY_LABEL"
+          
+          if [ -n "$DISPLAY_LABEL" ]; then
+            echo -e "\n/ { chosen { zephyr,display = &${DISPLAY_LABEL}; }; };\n&pro_micro_i2c { status = \"okay\"; };" >> zmk/app/boards/shields/eyelash_sofle/eyelash_sofle_peripheral_left.overlay
+            echo -e "\n/ { chosen { zephyr,display = &${DISPLAY_LABEL}; }; };\n&pro_micro_i2c { status = \"okay\"; };" >> zmk/app/boards/shields/eyelash_sofle/eyelash_sofle_peripheral_right.overlay
+            echo "Successfully injected display patches to peripheral overlays."
+          fi
+          
+          # 4. 競合を排除した純粋な個別ビルドの実行（左右の画面は上記パッチで制御されます）
           echo "=== Building Dongle ==="
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
           
           echo "=== Building Left Hand ==="
-          # 【修正】本体シールドにディスプレイ用シールド「nice_oled」をドッキングさせ、制御を有効化します
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD="eyelash_sofle_peripheral_left nice_oled" -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
           
           echo "=== Building Right Hand ==="
-          # 【修正】右手側も同様にディスプレイ用シールド「nice_oled」を合体させてビルドします
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD="eyelash_sofle_peripheral_right nice_oled" -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
           cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
 
       - name: Upload Firmware Artifacts
