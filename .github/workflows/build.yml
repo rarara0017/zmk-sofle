@@ -27,9 +27,12 @@ jobs:
         run: |
           mkdir -p artifacts
           
-          # 【最重要】CMakeにZephyrの位置を直接叩き込みます
+          # 1. CMakeにZephyrの位置を認識させる
           export CMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/zephyr:${CMAKE_PREFIX_PATH}"
           export ZEPHYR_BASE="${GITHUB_WORKSPACE}/zephyr"
+          
+          # 2. 【最重要】カスタムシールドをZMKの探索ディレクトリに直接注入します
+          cp -r boards/shields/eyelash_sofle zmk/app/boards/shields/
           
           echo "=== Building Dongle ==="
           west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
