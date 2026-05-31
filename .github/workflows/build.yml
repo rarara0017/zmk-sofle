@@ -14,35 +14,45 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          path: src # 階層ズレを防ぐため、一旦 src フォルダに退避させます
 
-      # すべてのビルド処理を1つのブロックにまとめ、環境変数（ZEPHYR_BASE）を完全に固定します
-      - name: Install and Build All Firmwares
+      - name: Initialize and Build All Firmwares
         run: |
-          # 1. 必要なツールとWestのセットアップ
+          # 1. ツールチェーンと West の導入
           pip3 install west
-          west init -l config
+          
+          # 2. ZMK公式の標準的なワークスペース展開（階層ズレを強制修正）
+          west init -m https://github.com/zmkfirmware/zmk --mr main workspace
+          cd workspace
+          
+          # あなたのリポジトリの config と boards をワークスペースに正しく配置
+          cp -r ../src/config .
+          cp -r ../src/boards .
+          
+          # 依存モジュールのダウンロード
           west update
           
-          # 2. 環境変数の固定
-          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/zephyr
-          echo "ZEPHYR_BASE is set to: $ZEPHYR_BASE"
+          # 3. 完璧な位置関係で環境変数を固定
+          export ZEPHYR_BASE=${GITHUB_WORKSPACE}/workspace/zephyr
           
-          # 3. 各ファームウェアのビルドと退避
-          mkdir -p artifacts
+          # 出力用フォルダの作成
+          mkdir -p ../artifacts
           
+          # 4. 各ファームウェアを標準コマンドでビルド
           echo "=== Building Dongle ==="
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_dongle.uf2
+          west build -p -b nice_nano_v2 -s app -- -DSHIELD=eyelash_sofle_central_dongle -DZMK_CONFIG="${GITHUB_WORKSPACE}/workspace/config"
+          cp build/zephyr/zmk.uf2 ../artifacts/eyelash_sofle_dongle.uf2
           
           echo "=== Building Left Hand ==="
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_left.uf2
+          west build -p -b nice_nano_v2 -s app -- -DSHIELD=eyelash_sofle_peripheral_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/workspace/config"
+          cp build/zephyr/zmk.uf2 ../artifacts/eyelash_sofle_left.uf2
           
           echo "=== Building Right Hand ==="
-          west build -p -b nice_nano_v2 -s zmk/app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-          cp build/zephyr/zmk.uf2 artifacts/eyelash_sofle_right.uf2
+          west build -p -b nice_nano_v2 -s app -- -DSHIELD=eyelash_sofle_peripheral_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/workspace/config"
+          cp build/zephyr/zmk.uf2 ../artifacts/eyelash_sofle_right.uf2
 
-      # 4. 生成された3つのファイルをアップロード
+      # 5. 成果物の回収
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
