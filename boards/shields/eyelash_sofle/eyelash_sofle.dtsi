@@ -9,6 +9,7 @@
 #include "eyelash_sofle-layouts.dtsi"
 
 / {
+	compatible = "zmk,compat";
 
     chosen {
         zmk,kscan = &kscan0;
