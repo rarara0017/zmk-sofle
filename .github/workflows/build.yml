@@ -7,5 +7,24 @@ on:
 
 jobs:
   build:
-    uses: zmkfirmware/zmk-actions/.github/workflows/build-firmware.yml@v2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Build Firmware using Local Script
+        # リポジトリに同梱されているビルドスクリプトを、GitHubのLinux（Docker環境）上で直接実行します
+        run: |
+          chmod +x ./build_local.sh
+          RUNTIME=docker ./build_local.sh build
+          ./build_local.sh copy ./artifacts
+
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eyelash_sofle_dongle_firmware
+          path: artifacts/*
 
