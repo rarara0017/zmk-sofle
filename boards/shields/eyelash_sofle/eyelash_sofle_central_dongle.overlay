@@ -8,6 +8,8 @@
 #include "eyelash_sofle.dtsi"
 
 /{
+	compatible = "zmk,compat";
+
     chosen {
         zmk,kscan = &mock_kscan;
         zephyr,display = &oled;
